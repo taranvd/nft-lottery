@@ -8,8 +8,7 @@
 
 ## Project Description
 
-This project involves creating a lottery smart contract that allows various organizations to collaborate and conduct a unified lottery among their participants. The lottery includes different NFT collections, representing marketing campaigns of organizations. Participants automatically join the lottery by owning NFTs, with rewards distributed in an ERC20 token. The contract should handle various technical aspects, including random winner selection, reward distribution, and minimal test coverage.
-
+This project involves creating a lottery smart contract that allows various organizations to collaborate and conduct a unified lottery among their participants. The lottery includes different NFT collections, representing marketing campaigns of organizations. Participants automatically join the lottery by owning NFTs, with rewards distributed in an ERC20 token.
 For more details, please refer to the [documentation](docs).
 
 ## ToDo List
