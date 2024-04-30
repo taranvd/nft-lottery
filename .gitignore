@@ -26,3 +26,5 @@ contracts/artifacts/
 ignition
 
 test.md
+
+.DS_Store
