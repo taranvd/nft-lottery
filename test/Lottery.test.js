@@ -38,7 +38,7 @@ describe("Lottery", function () {
 
     await lottery.addCollection(nftCollection.address);
     const collections = await lottery.getCollections();
-    expect(collections.length).to.be.above(0);
+    expect(collections.length).to.be.above(1);
   });
 
   it("should remove NFT collection from the lottery", async function () {
