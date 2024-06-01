@@ -97,10 +97,6 @@ contract Lottery is ReentrancyGuard, Ownable {
         lotteryState = LotteryState.Inactive;
         tokenReward = IERC20(_tokenReward);
         rewards = _rewards;
-        levels.push(Level(1, rewards[0])); // jackpot
-        levels.push(Level(0, rewards[1])); // Level 1
-        levels.push(Level(0, rewards[2])); // Level 2
-        levels.push(Level(0, rewards[3])); // Level 3
     }
 
     /**
@@ -247,10 +243,10 @@ contract Lottery is ReentrancyGuard, Ownable {
      * @param participantsCount Total number of participants
      * @return An array of winner addresses
      */
-    function _determineWinners(uint256 winnersCount, uint256 participantsCount)
-        internal
-        returns (address[] memory)
-    {
+    function _determineWinners(
+        uint256 winnersCount,
+        uint256 participantsCount
+    ) internal returns (address[] memory) {
         // If winnersCount is less than 1, set it to 1
         if (winnersCount < 1) {
             winnersCount = 1;
@@ -306,11 +302,9 @@ contract Lottery is ReentrancyGuard, Ownable {
      * @param index Index of the participant
      * @return Participant address
      */
-    function _getParticipantAtIndex(uint256 index)
-        internal
-        view
-        returns (address)
-    {
+    function _getParticipantAtIndex(
+        uint256 index
+    ) internal view returns (address) {
         for (uint256 i = 0; i < collections.length; i++) {
             uint256 collectionTokens = collections[i].totalSupply();
             if (index < collectionTokens) {
