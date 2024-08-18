@@ -8,9 +8,6 @@
 
 ## Project Description
 
-This project involves creating a lottery smart contract that allows various organizations to collaborate and conduct a unified lottery among their participants. The lottery includes different NFT collections, representing marketing campaigns of organizations. Participants automatically join the lottery by owning NFTs, with rewards distributed in an ERC20 token.
+This project involves creating a lottery smart contract that allows various organizations to collaborate and conduct a unified lottery among their participants. The lottery includes different NFT collections, representing marketing campaigns of organizations. Participants automatically join the lottery by owning NFTs, with rewards distributed in an ERC20 token. The contract has been upgraded to support proxy deployment, allowing for future updates without changing the contract address.
+
 For more details, please refer to the [documentation](docs).
-
-## ToDo List
-- [ ]  Refactor to use Chainlink VRF for random number generation
-
