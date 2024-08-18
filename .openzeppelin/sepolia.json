@@ -1,0 +1,251 @@
+{
+  "manifestVersion": "3.2",
+  "admin": {
+    "address": "0x8713645261dE92B6Aad6994cb522D019078CECf6",
+    "txHash": "0xa3a47baaec99caff85a7e750c429ba74d9ee0a854644c45ca82a08cbafb33252"
+  },
+  "proxies": [
+    {
+      "address": "0xC1DD88005b947F76FcC0f8849530a9B7AE092E11",
+      "txHash": "0x552996345063123c50be46568832ccf41dfa1737e344c13d3ea7f200935a5d1d",
+      "kind": "transparent"
+    }
+  ],
+  "impls": {
+    "6de44903a5d92eeb295d989f83426c6afb950a4616820a54b42d866bd165c855": {
+      "address": "0x240a05e3aE09878D5949FEEc50C1C518987537EB",
+      "txHash": "0x0c5a51d7d2962db210cb32b55212e00a3ccae80e989184cc5858d0d2683fb4c1",
+      "layout": {
+        "solcVersion": "0.8.15",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:88"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:40"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "winnersByLevel",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_mapping(t_uint256,t_array(t_address)dyn_storage)",
+            "contract": "Lottery",
+            "src": "contracts/Lottery.sol:26"
+          },
+          {
+            "label": "tokenReward",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_contract(ERC20USDT)5295",
+            "contract": "Lottery",
+            "src": "contracts/Lottery.sol:29"
+          },
+          {
+            "label": "rewards",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_array(t_uint32)5_storage",
+            "contract": "Lottery",
+            "src": "contracts/Lottery.sol:32"
+          },
+          {
+            "label": "rewardsPaid",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_bool",
+            "contract": "Lottery",
+            "src": "contracts/Lottery.sol:35"
+          },
+          {
+            "label": "winnersTracker",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "Lottery",
+            "src": "contracts/Lottery.sol:38"
+          },
+          {
+            "label": "burnedTokens",
+            "offset": 0,
+            "slot": "156",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_bool))",
+            "contract": "Lottery",
+            "src": "contracts/Lottery.sol:41"
+          },
+          {
+            "label": "collections",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_array(t_contract(NFTCollection)6239)dyn_storage",
+            "contract": "Lottery",
+            "src": "contracts/Lottery.sol:44"
+          },
+          {
+            "label": "levels",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_array(t_struct(LevelInfo)5361_storage)dyn_storage",
+            "contract": "Lottery",
+            "src": "contracts/Lottery.sol:59"
+          },
+          {
+            "label": "lotteryState",
+            "offset": 0,
+            "slot": "159",
+            "type": "t_enum(LotteryState)5356",
+            "contract": "Lottery",
+            "src": "contracts/Lottery.sol:62"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_contract(NFTCollection)6239)dyn_storage": {
+            "label": "contract NFTCollection[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_struct(LevelInfo)5361_storage)dyn_storage": {
+            "label": "struct Lottery.LevelInfo[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_array(t_uint32)5_storage": {
+            "label": "uint32[5]",
+            "numberOfBytes": "32"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(ERC20USDT)5295": {
+            "label": "contract ERC20USDT",
+            "numberOfBytes": "20"
+          },
+          "t_contract(NFTCollection)6239": {
+            "label": "contract NFTCollection",
+            "numberOfBytes": "20"
+          },
+          "t_enum(LotteryState)5356": {
+            "label": "enum Lottery.LotteryState",
+            "members": [
+              "Inactive",
+              "Active"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_bool))": {
+            "label": "mapping(address => mapping(uint256 => bool))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_array(t_address)dyn_storage)": {
+            "label": "mapping(uint256 => address[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(LevelInfo)5361_storage": {
+            "label": "struct Lottery.LevelInfo",
+            "members": [
+              {
+                "label": "winnersCount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "rewardIndex",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint32": {
+            "label": "uint32",
+            "numberOfBytes": "4"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {}
+      }
+    }
+  }
+}

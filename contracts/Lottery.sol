@@ -1,14 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 import "./NFTCollection.sol";
 import "./ERC20USDT.sol";
 
-contract Lottery is ReentrancyGuard, Ownable {
+contract Lottery is
+    Initializable,
+    ReentrancyGuardUpgradeable,
+    OwnableUpgradeable
+{
     using SafeMath for uint256;
 
     uint8 constant MIN_PARTICIPANTS = 4;
@@ -25,8 +31,14 @@ contract Lottery is ReentrancyGuard, Ownable {
     // Reward amounts
     uint32[5] public rewards;
 
+    // track whether rewards have been paid:
+    bool public rewardsPaid;
+
     // Map to track winners
     mapping(address => bool) internal winnersTracker;
+
+    // Map to track burned tokens
+    mapping(address => mapping(uint256 => bool)) internal burnedTokens;
 
     // Array to store NFT collections
     NFTCollection[] private collections;
@@ -36,6 +48,15 @@ contract Lottery is ReentrancyGuard, Ownable {
         Inactive,
         Active
     }
+
+    // Define a struct to hold level information
+    struct LevelInfo {
+        uint256 winnersCount;
+        uint256 rewardIndex;
+    }
+
+    // Define an array of levels
+    LevelInfo[] public levels;
 
     // State variable to track lottery state
     LotteryState public lotteryState;
@@ -54,24 +75,42 @@ contract Lottery is ReentrancyGuard, Ownable {
     event CollectionRemoved(address collectionAddress);
 
     // Errors
-    error CollectionAlreadyAdded(string message);
-    error CollectionNotFound(string message);
-    error LotteryAlreadyActive(string message);
-    error LotteryNotActive(string message);
-    error NoCollectionsAdded(string message);
-    error TokenNotOwned(string message);
-    error NoParticipants(string message);
+    error CollectionAlreadyAdded();
+    error CollectionNotFound();
+    error LotteryAlreadyActive();
+    error LotteryNotActive();
+    error LotteryNotEnded();
+    error NoCollectionsAdded();
+    error TokenNotOwned();
+    error NoParticipants();
+    error RewardsAlreadyPaid();
 
     /**
-     * @notice Constructor function
-     * @dev Initializes the contract with the address of the reward token and reward amounts for each level.
+     * @notice Constructor function replacement
+     * @dev Use `initialize` instead of constructor for upgradeable contracts.
      * @param _tokenReward Address of the reward token
      * @param _rewards Array of reward amounts for each level [jackpot, level1, level2, level3, burnReward]
      */
-    constructor(address _tokenReward, uint32[5] memory _rewards) {
+    function initialize(
+        address _tokenReward,
+        uint32[5] memory _rewards
+    ) public initializer {
+        __ReentrancyGuard_init();
+        __Ownable_init();
+
         lotteryState = LotteryState.Inactive;
         tokenReward = ERC20USDT(_tokenReward);
         rewards = _rewards;
+        levels.push(LevelInfo({winnersCount: 1, rewardIndex: 0})); // Jackpot
+        levels.push(
+            LevelInfo({winnersCount: LEVEL1_WINNERS_PERCENTAGE, rewardIndex: 1})
+        );
+        levels.push(
+            LevelInfo({winnersCount: LEVEL2_WINNERS_PERCENTAGE, rewardIndex: 2})
+        );
+        levels.push(
+            LevelInfo({winnersCount: LEVEL3_WINNERS_PERCENTAGE, rewardIndex: 3})
+        );
     }
 
     /**
@@ -83,7 +122,7 @@ contract Lottery is ReentrancyGuard, Ownable {
         // Check if the collection is already added
         for (uint256 i = 0; i < collections.length; i++) {
             if (address(collections[i]) == collectionAddress)
-                revert CollectionAlreadyAdded("Collection already added");
+                revert CollectionAlreadyAdded();
         }
         collections.push(NFTCollection(collectionAddress));
         emit CollectionAdded(collectionAddress);
@@ -107,7 +146,7 @@ contract Lottery is ReentrancyGuard, Ownable {
                 return; // Exit the function after removal
             }
         }
-        revert CollectionNotFound("Collection not found");
+        revert CollectionNotFound();
     }
 
     /**
@@ -116,11 +155,12 @@ contract Lottery is ReentrancyGuard, Ownable {
      */
     function startLottery() external onlyOwner {
         // Check if the lottery is already active
-        if (lotteryState == LotteryState.Active)
-            revert LotteryAlreadyActive("Lottery already active");
+        if (lotteryState == LotteryState.Active) revert LotteryAlreadyActive();
         // Check if any collections are added
-        if (collections.length == 0)
-            revert NoCollectionsAdded("No collections added for the lottery");
+        if (collections.length == 0) revert NoCollectionsAdded();
+
+        // Reset rewardsPaid for the new lottery
+        rewardsPaid = false;
 
         emit LotteryStarted(block.timestamp);
         lotteryState = LotteryState.Active;
@@ -135,56 +175,34 @@ contract Lottery is ReentrancyGuard, Ownable {
         require(lotteryState == LotteryState.Active, "Lottery not active");
 
         // Get the total number of participants
-        uint256 participantsCount = getParticipantsCount();
+        uint256 participantsCount = _getParticipantsCount();
 
-        if (participantsCount <= MIN_PARTICIPANTS)
-            revert NoParticipants("Not enough participants!");
-
-        // Determine the number of winners for each level
-        uint256 jackpotWinnersCount = 1;
-        uint256 level1WinnersCount = participantsCount
-            .mul(LEVEL1_WINNERS_PERCENTAGE)
-            .div(10000); // 0.1% of participants
-
-        uint256 level2WinnersCount = participantsCount
-            .mul(LEVEL2_WINNERS_PERCENTAGE)
-            .div(10000); // 1% of participants
-
-        uint256 level3WinnersCount = participantsCount
-            .mul(LEVEL3_WINNERS_PERCENTAGE)
-            .div(10000); // 10% of participants
+        if (participantsCount <= MIN_PARTICIPANTS) revert NoParticipants();
 
         // Determine winners for each level
-        address[] memory jackpotWinners = determineWinners(
-            jackpotWinnersCount,
-            participantsCount
-        );
-        address[] memory level1Winners = determineWinners(
-            level1WinnersCount,
-            participantsCount
-        );
-        address[] memory level2Winners = determineWinners(
-            level2WinnersCount,
-            participantsCount
-        );
-        address[] memory level3Winners = determineWinners(
-            level3WinnersCount,
-            participantsCount
-        );
+        address[][] memory levelWinners = new address[][](levels.length);
+        for (uint256 i = 0; i < levels.length; i++) {
+            uint256 winnersCount = participantsCount
+                .mul(levels[i].winnersCount)
+                .div(10000);
+            levelWinners[i] = _determineWinners(
+                winnersCount,
+                participantsCount
+            );
+        }
 
         // Emit event with winners
         emit WinnersAnnounced(
-            jackpotWinners,
-            level1Winners,
-            level2Winners,
-            level3Winners
+            levelWinners[0], // Jackpot winners
+            levelWinners[1], // Level 1 winners
+            levelWinners[2], // Level 2 winners
+            levelWinners[3] // Level 3 winners
         );
 
         // Store winners for each level
-        winnersByLevel[0] = jackpotWinners;
-        winnersByLevel[1] = level1Winners;
-        winnersByLevel[2] = level2Winners;
-        winnersByLevel[3] = level3Winners;
+        for (uint256 i = 0; i < levels.length; i++) {
+            winnersByLevel[i] = levelWinners[i];
+        }
 
         // Update lottery state
         lotteryState = LotteryState.Inactive;
@@ -198,7 +216,7 @@ contract Lottery is ReentrancyGuard, Ownable {
      * @param participantsCount Total number of participants
      * @return An array of winner addresses
      */
-    function determineWinners(
+    function _determineWinners(
         uint256 winnersCount,
         uint256 participantsCount
     ) internal returns (address[] memory) {
@@ -219,7 +237,13 @@ contract Lottery is ReentrancyGuard, Ownable {
                 )
             );
             uint256 index = randomNumber % participantsCount;
-            address participant = getParticipantAtIndex(index);
+            address participant = _getParticipantAtIndex(index);
+
+            if (_isBurnedToken(participant, index)) {
+                offset++;
+                continue;
+            }
+
             // Check if the participant has not already won
             if (!winnersTracker[participant]) {
                 winners[count] = participant;
@@ -236,7 +260,7 @@ contract Lottery is ReentrancyGuard, Ownable {
      * @dev This function calculates the total number of participants by summing the total supply of tokens from all added collections.
      * @return Total number of participants
      */
-    function getParticipantsCount() internal view returns (uint256) {
+    function _getParticipantsCount() internal view returns (uint256) {
         uint256 count = 0;
         for (uint256 i = 0; i < collections.length; i++) {
             count += collections[i].totalSupply();
@@ -250,7 +274,7 @@ contract Lottery is ReentrancyGuard, Ownable {
      * @param index Index of the participant
      * @return Participant address
      */
-    function getParticipantAtIndex(
+    function _getParticipantAtIndex(
         uint256 index
     ) internal view returns (address) {
         for (uint256 i = 0; i < collections.length; i++) {
@@ -265,36 +289,30 @@ contract Lottery is ReentrancyGuard, Ownable {
     }
 
     /**
-     * @notice Checks if a participant is already a winner
-     * @dev This function checks if a participant is already a winner based on winnersTracker mapping.
-     * @param participant Address of the participant
-     * @return Boolean indicating whether the participant is already a winner
-     */
-    function isAlreadyWinner(address participant) internal view returns (bool) {
-        return winnersTracker[participant];
-    }
-
-    /**
      * @notice Pays rewards to the winners
      * @dev This function distributes rewards to the winners based on their respective reward levels.
      */
     function payRewards() external onlyOwner {
-        // Check if the lottery is ended
-        require(lotteryState == LotteryState.Inactive, "Lottery must be ended");
+        if (lotteryState != LotteryState.Inactive) {
+            revert LotteryNotEnded();
+        }
 
-        address[] memory jackpotWinners = winnersByLevel[0];
-        address[] memory level1Winners = winnersByLevel[1];
-        address[] memory level2Winners = winnersByLevel[2];
-        address[] memory level3Winners = winnersByLevel[3];
+        if (rewardsPaid) {
+            revert RewardsAlreadyPaid();
+        }
 
-        // Distribute rewards to winners
-        sendReward(jackpotWinners[0], rewards[0]);
-        for (uint256 i = 0; i < level1Winners.length; i++)
-            sendReward(level1Winners[i], rewards[1]);
-        for (uint256 i = 0; i < level2Winners.length; i++)
-            sendReward(level2Winners[i], rewards[2]);
-        for (uint256 i = 0; i < level3Winners.length; i++)
-            sendReward(level3Winners[i], rewards[3]);
+        uint256 levelsCount = levels.length;
+
+        for (uint256 i = 0; i < levelsCount; i++) {
+            address[] memory winners = winnersByLevel[i];
+            uint32 reward = rewards[i];
+
+            for (uint256 j = 0; j < winners.length; j++) {
+                _sendReward(winners[j], reward);
+            }
+        }
+
+        rewardsPaid = true;
     }
 
     /**
@@ -303,8 +321,8 @@ contract Lottery is ReentrancyGuard, Ownable {
      * @param recipient Address of the recipient
      * @param amount Amount of reward to send
      */
-    function sendReward(address recipient, uint32 amount) internal {
-        tokenReward.mint(recipient, amount);
+    function _sendReward(address recipient, uint32 amount) internal {
+        tokenReward.transfer(recipient, amount);
         emit RewardPaid(recipient, amount);
     }
 
@@ -317,10 +335,12 @@ contract Lottery is ReentrancyGuard, Ownable {
     function burnNFT(address collectionAddress, uint256 tokenId) external {
         // Check if the caller owns the token
         if (NFTCollection(collectionAddress).ownerOf(tokenId) != msg.sender)
-            revert TokenNotOwned("Sender is not the owner of the token");
+            revert TokenNotOwned();
 
         // Burn the NFT
         NFTCollection(collectionAddress).burn(tokenId);
+
+        burnedTokens[collectionAddress][tokenId] = true;
 
         // Mint burn reward to the caller
         tokenReward.mint(msg.sender, rewards[4]);
@@ -334,5 +354,19 @@ contract Lottery is ReentrancyGuard, Ownable {
      */
     function getCollections() public view returns (NFTCollection[] memory) {
         return collections;
+    }
+
+    /**
+     * @notice Checks if a specific NFT token has been burned by the participant.
+     * @dev This function checks the mapping `burnedTokens` to determine if the given token ID has been marked as burned by the participant.
+     * @param participant The address of the participant (NFT owner).
+     * @param tokenId The ID of the NFT token to check.
+     * @return bool Returns `true` if the token has been burned, `false` otherwise.
+     */
+    function _isBurnedToken(
+        address participant,
+        uint256 tokenId
+    ) internal view returns (bool) {
+        return burnedTokens[participant][tokenId];
     }
 }
