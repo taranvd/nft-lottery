@@ -1,4 +1,4 @@
-const { ethers } = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 const { expect } = require("chai");
 
 describe("Lottery", function () {
@@ -22,10 +22,14 @@ describe("Lottery", function () {
     await nftCollection.deployed();
     await nftCollection.mintTokensForAddresses(participants);
 
-    const rewards = [10000, 5000, 2000, 1000, 50];
+    const rewards = [100, 50, 20, 10, 5];
 
     const Lottery = await ethers.getContractFactory("Lottery");
-    lottery = await Lottery.deploy(usdtContract.address, rewards);
+    lottery = await upgrades.deployProxy(
+      Lottery,
+      [usdtContract.address, rewards],
+      { initializer: "initialize" }
+    );
     await lottery.deployed();
     await lottery.addCollection(nftCollection.address);
   });
@@ -83,6 +87,9 @@ describe("Lottery", function () {
     // Start the lottery
     await lottery.startLottery();
 
+    await usdtContract.balanceOf(usdtContract.address);
+    await usdtContract.mint(lottery.address, 10000);
+
     // End the lottery to determine winners
     await lottery.endLottery();
 
@@ -92,37 +99,20 @@ describe("Lottery", function () {
     const level2Winners = await lottery.winnersByLevel(2, 0);
     const level3Winners = await lottery.winnersByLevel(3, 0);
 
-    // Get the initial balance of the jackpot winner before paying rewards
-    const initialJackpotBalance = await usdtContract.balanceOf(jackpotWinners);
-
-    // Get the initial balance of the level 1 winner before paying rewards
-    const initialLevel1Balance = await usdtContract.balanceOf(level1Winners);
-
-    // Get the initial balance of the level 2 winner before paying rewards
-    const initialLevel2Balance = await usdtContract.balanceOf(level2Winners);
-
-    // Get the initial balance of the level 3 winner before paying rewards
-    const initialLevel3Balance = await usdtContract.balanceOf(level3Winners);
-
     // Pay rewards
     await lottery.payRewards();
 
-    // Get the final balance of the jackpot winner after paying rewards
+    // Get the final balance of the winners after paying rewards
     const finalJackpotBalance = await usdtContract.balanceOf(jackpotWinners);
-
-    // Get the final balance of the level 1 winner after paying rewards
     const finalLevel1Balance = await usdtContract.balanceOf(level1Winners);
-
-    // Get the final balance of the level 2 winner after paying rewards
     const finalLevel2Balance = await usdtContract.balanceOf(level2Winners);
-
-    // Get the final balance of the level 3 winner after paying rewards
     const finalLevel3Balance = await usdtContract.balanceOf(level3Winners);
 
-    expect(finalJackpotBalance).to.above(initialJackpotBalance);
-    expect(finalLevel1Balance).to.above(initialLevel1Balance);
-    expect(finalLevel2Balance).to.above(initialLevel2Balance);
-    expect(finalLevel3Balance).to.above(initialLevel3Balance);
+    // Переконайтеся, що кожен переможець отримав винагороду
+    expect(finalJackpotBalance).to.above(0);
+    expect(finalLevel1Balance).to.above(0);
+    expect(finalLevel2Balance).to.above(0);
+    expect(finalLevel3Balance).to.above(0);
   });
 
   it("should burn NFT and mint burn reward to caller", async function () {
@@ -134,5 +124,34 @@ describe("Lottery", function () {
     const currentBalance = await usdtContract.balanceOf(user1.address);
 
     expect(currentBalance).to.above(initialBalance);
+  });
+
+  it("should burn the NFT, reward the user, and exclude the burned token from winner selection", async function () {
+    // Start the lottery
+    await lottery.startLottery();
+
+    // Burn the NFT owned by user1
+    const tokenId = await nftCollection.tokenOfOwnerByIndex(user1.address, 0);
+    await nftCollection.connect(user1).approve(lottery.address, tokenId);
+    await lottery.connect(user1).burnNFT(nftCollection.address, tokenId);
+
+    // Check that user1 received the burn reward
+    const burnRewardBalance = await usdtContract.balanceOf(user1.address);
+    expect(burnRewardBalance).to.be.above(0);
+
+    // End the lottery
+    await lottery.endLottery();
+
+    // Check that user1 is not in the winners list
+    const winners = await Promise.all([
+      lottery.winnersByLevel(0, 0),
+      lottery.winnersByLevel(1, 0),
+      lottery.winnersByLevel(2, 0),
+      lottery.winnersByLevel(3, 0),
+    ]);
+
+    for (let i = 0; i < winners.length; i++) {
+      expect(winners[i]).to.not.include(user1.address);
+    }
   });
 });

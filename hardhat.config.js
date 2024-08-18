@@ -1,5 +1,5 @@
-require("@nomiclabs/hardhat-waffle");
-require("solidity-coverage");
+require("@openzeppelin/hardhat-upgrades");
+require("@nomicfoundation/hardhat-toolbox");
 
 module.exports = {
   solidity: "0.8.15",
